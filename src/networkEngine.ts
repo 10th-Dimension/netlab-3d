@@ -220,7 +220,7 @@ function createDeviceState(id: DeviceId, scenarioId: string): DeviceRuntimeState
     { prefix: '0.0.0.0/0', nextHop: '198.51.100.1', interface: 'Gi0/2', protocol: 'default' as const, metric: 1, administrativeDistance: 1 },
     ...(scenarioId === 'route-lpm' ? [...ipv4RouteTable, ...ipv6RouteTable] : scenarioId.startsWith('ipv6-') ? [...ipv6RouteTable] : []),
   ] : id === 'windows' || id === 'linux' ? [
-    { prefix: '0.0.0.0/0', nextHop: '192.168.10.1', interface: interfaces[0].name, protocol: 'default' as const, metric: 0, administrativeDistance: 0 },
+    ...(validIpAddress(baseIPv4(id, scenarioId).gateway) ? [{ prefix: '0.0.0.0/0', nextHop: baseIPv4(id, scenarioId).gateway, interface: interfaces[0].name, protocol: 'default' as const, metric: 0, administrativeDistance: 0 }] : []),
     ...(id === 'windows' && scenarioId.startsWith('ipv6-') ? [{ prefix: 'fe80::/64', nextHop: '—', interface: interfaces[0].name, protocol: 'connected' as const, metric: 0, administrativeDistance: 0 }] : []),
   ] : []
   const ipv6Addresses = id === 'windows'
@@ -570,7 +570,7 @@ export function runCliCommand(command: string, scenario: Scenario, state: Networ
     const selected = conditions.filter((link) => !name || link.id.toLowerCase().includes(name) || `${devices[link.from].shortName} ${devices[link.to].shortName}`.toLowerCase().includes(name))
     return { command: raw, output: selected.length ? selected.map((link) => `${devices[link.from].shortName} ↔ ${devices[link.to].shortName} is ${link.status}, line protocol is ${link.status}\n  ${link.speedMbps} Mbps, ${link.duplex}-duplex, MTU ${link.mtu}\n  latency ${link.latencyMs} ms, jitter ${link.jitterMs} ms, loss ${link.lossPercent}%`).join('\n\n') : `No interface or simulated link named ${name}.` }
   }
-  if (/^show spanning-tree$/.test(lower)) return { command: raw, output: scenario.id === 'stp-loop' ? `VLAN 10 spanning tree\nRoot ID    Priority 8192 · SW-02 · 02:42:AC:11:00:02\nRoot port  Gi0/2 · SW-01 → SW-02\nAlternate Gi0/3 · SW-01 → SW-03 · discarding\nAn alternate path is blocked to prevent a Layer 2 loop.` : 'Spanning Tree port roles are not represented in this journey. Open the STP loop prevention lab to inspect them.' }
+  if (/^show spanning-tree$/.test(lower)) return { command: raw, output: scenario.id === 'stp-loop' ? `VLAN 30 spanning tree\nRoot ID    Priority 4096 · SW-01\nSW-03 root port    toward SW-01 · forwarding\nSW-03 alternate    toward SW-02 · discarding\nAfter the SW-01 ↔ SW-03 link fails, SW-03 forwards through SW-02.` : 'Spanning Tree port roles are not represented in this journey. Open the STP loop prevention lab to inspect them.' }
   if (/^show (?:running-config|configuration)$/.test(lower)) return { command: raw, output: `R-01 modeled configuration excerpt\nIPv4 interface: ${router.ipv4.address}${router.ipv4.prefix ? `/${router.ipv4.prefix}` : ''}\nUpstream gateway: ${router.ipv4.gateway}\nThis journey does not model a full router operating system or every interface.` }
   if (/^netstat(?: -an)?$/.test(lower)) {
     const sessions = Object.entries(state.devices.router.tables['Firewall session table'] ?? {})

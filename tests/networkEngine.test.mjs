@@ -48,6 +48,18 @@ test('initial device addresses and default routes agree with scenario topology',
   const vlan = createNetworkState(scenarios.find((scenario) => scenario.id === 'vlan-routing'), -1)
   assert.equal(vlan.devices.linux.ipv4.vlan, '20')
   assert.equal(vlan.devices.linux.routes.find((route) => route.prefix === '0.0.0.0/0')?.nextHop, '10.20.20.1')
+  for (const id of ['dhcp', 'dhcp-relay', 'wifi-join']) {
+    const state = createNetworkState(scenarios.find((scenario) => scenario.id === id), -1)
+    assert.equal(state.devices.windows.ipv4.address, 'Unconfigured · DHCP pending')
+    assert.equal(state.devices.windows.routes.some((route) => route.prefix === '0.0.0.0/0'), false)
+  }
+  const relay = createNetworkState(scenarios.find((scenario) => scenario.id === 'dhcp-relay'), -1)
+  assert.equal(relay.devices.router.ipv4.address, '10.20.0.1')
+  const stp = createNetworkState(scenarios.find((scenario) => scenario.id === 'stp-loop'), -1)
+  assert.equal(stp.devices.windows.ipv4.address, '10.30.0.10')
+  assert.equal(stp.devices.linux.ipv4.address, '10.30.0.20')
+  assert.equal(stp.devices.windows.ipv4.vlan, '30')
+  assert.equal(stp.devices.windows.routes.some((route) => route.prefix === '0.0.0.0/0'), false)
 })
 
 test('preserves all original journeys and loads every Phase 2 journey', () => {
