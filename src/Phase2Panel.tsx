@@ -255,7 +255,7 @@ export function Phase2Panel({ scenario, stepIndex, onSelectStep, linkConditions,
 
   return <aside className="panel inspector-panel phase2-panel">
     <div className="inspector-top phase2-heading">
-      <div className="inspector-kicker"><span className="event-badge" style={{ color: scenario.accent, backgroundColor: `${scenario.accent}15`, borderColor: `${scenario.accent}35` }}><Activity size={13} /></span><span>PHASE 2 WORKBENCH</span><span className="event-kind">{scenario.id === 'troubleshooting' ? 'FAULT PRACTICE' : `EVENT ${String(step.order).padStart(2, '0')}`}</span></div>
+      <div className="inspector-kicker"><span className="event-badge" style={{ color: scenario.accent, backgroundColor: `${scenario.accent}15`, borderColor: `${scenario.accent}35` }}><Activity size={13} /></span><span>LAB WORKBENCH</span><span className="event-kind">{scenario.id === 'troubleshooting' ? 'FAULT PRACTICE' : `EVENT ${String(step.order).padStart(2, '0')}`}</span></div>
       <h2>{scenario.id === 'troubleshooting' ? 'Investigate the network' : step.protocol}</h2>
       <div className="layer-chip"><span className="layer-dot" style={{ background: scenario.accent }} />{scenario.id === 'troubleshooting' ? 'One simulated network · no live traffic' : step.osiLayer}</div>
     </div>
@@ -265,7 +265,7 @@ export function Phase2Panel({ scenario, stepIndex, onSelectStep, linkConditions,
     <div className="inspector-scroll phase2-scroll">
       {view === 'packet' && <>
         <section className="checkpoint-card" aria-label="Study checkpoint">
-          <div className="checkpoint-kicker"><BookOpen size={15} /><span>START HERE · STUDY CHECKPOINT</span>{checkpointComplete && <BadgeCheck size={16} className="checkpoint-done" />}</div>
+          <div className="checkpoint-kicker"><BookOpen size={15} /><span>NETWORK+ QUICK CHECK</span>{checkpointComplete && <BadgeCheck size={16} className="checkpoint-done" />}</div>
           <p className="checkpoint-idea">{checkpoint.idea}</p>
           <h3>{checkpoint.question}</h3>
           <div className="checkpoint-choices">{checkpoint.choices.map((choice, index) => <button key={choice} className={checkpointAnswer === index ? index === checkpoint.correct ? 'correct' : 'incorrect' : ''} onClick={() => { setCheckpointAnswer(index); if (index === checkpoint.correct) onCompleteCheckpoint(scenario.id) }} aria-pressed={checkpointAnswer === index}><span>{String.fromCharCode(65 + index)}</span>{choice}</button>)}</div>
@@ -291,7 +291,7 @@ export function Phase2Panel({ scenario, stepIndex, onSelectStep, linkConditions,
           <div className="payload-row"><span>MESSAGE</span><code>{step.payload}</code></div>
         </div>
         {step.hopFrames?.length ? <div className="detail-section"><div className="section-label"><span>LINK HEADER AT EACH HOP</span><span className="protocol-pill">MAC CHANGES</span></div>{step.hopFrames.map((hop, index) => <div className="hop-card" key={`${hop.fromDevice}-${hop.toDevice}-${index}`}><div className="hop-heading"><span>{devices[hop.fromDevice].shortName} <ArrowRight size={12} /> {devices[hop.toDevice].shortName}</span><small>{hop.egressInterface}</small></div><div className="hop-addresses"><code>{hop.sourceMac}</code><ArrowRight size={13} /><code>{hop.destinationMac}</code></div>{hop.note && <div className="hop-note">{hop.note}</div>}</div>)}</div> : null}
-        <div className="detail-section"><div className="section-label"><span>STATE MUTATIONS</span><span className="change-count">{step.deviceChanges.length} CHANGES</span></div>{step.deviceChanges.length ? step.deviceChanges.map((item, index) => <div className="state-row state-changed" key={`${item.deviceId}-${item.table}-${item.key}-${index}`}><span>{devices[item.deviceId].shortName} · {item.table}</span><code>{item.key}: {item.value}</code></div>) : <div className="transition-empty">This event makes no persistent table change.</div>}</div>
+        <div className="detail-section"><div className="section-label"><span>DEVICE STATE CHANGES</span><span className="change-count">{step.deviceChanges.length} CHANGES</span></div>{step.deviceChanges.length ? step.deviceChanges.map((item, index) => <div className="state-row state-changed" key={`${item.deviceId}-${item.table}-${item.key}-${index}`}><span>{devices[item.deviceId].shortName} · {item.table}</span><code>{item.key}: {item.value}</code></div>) : <div className="transition-empty">This event makes no persistent table change.</div>}</div>
         {scenario.networkPlusTopics?.length ? <div className="topic-tags"><span>NETWORK+ TOPICS</span><div>{scenario.networkPlusTopics.map((topic) => <i key={topic}>{topic}</i>)}</div></div> : null}
       </>}
 

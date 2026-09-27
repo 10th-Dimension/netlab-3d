@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { ContactShadows, Html, Line, OrbitControls } from '@react-three/drei'
 import { Vector3, type Group } from 'three'
 import {
-  Activity, ArrowDownUp, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck,
+  Activity, ArrowDownUp, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown,
   Layers3, LockKeyhole, Network, Pause, Play, Radio, RotateCcw, Router as RouterIcon, SlidersHorizontal,
   SkipBack, SkipForward,
 } from 'lucide-react'
@@ -225,8 +225,11 @@ function App() {
               })}</div>)}
               {matchingPath.length === 0 && <p className="scenario-empty">No matching lab. Try an address, protocol, or device name.</p>}
             </div>
-            <div className="scenario-outcome"><BadgeCheck size={15} /><span><b>GOAL</b>{scenario.outcome}</span></div>
-            <a className="objectives-link" href="https://comptiacdn.azureedge.net/webcontent/docs/default-source/exam-objectives/comptia-network-n10-009-exam-objectives-%284-0%29-%281%29.pdf?sfvrsn=f31cc6c4_4" target="_blank" rel="noreferrer">Compare with official Network+ N10-009 objectives <ArrowUpRight size={13} /></a>
+            <details className="scenario-goal">
+              <summary><BadgeCheck size={15} aria-hidden="true" /><span>GOAL</span><ChevronDown size={14} aria-hidden="true" /></summary>
+              <p>{scenario.outcome}</p>
+              <a className="objectives-link" href="https://comptiacdn.azureedge.net/webcontent/docs/default-source/exam-objectives/comptia-network-n10-009-exam-objectives-%284-0%29-%281%29.pdf?sfvrsn=f31cc6c4_4" target="_blank" rel="noreferrer">Compare with official Network+ N10-009 objectives <ArrowUpRight size={13} /></a>
+            </details>
           </section>
 
           <section className="panel osi-panel">
