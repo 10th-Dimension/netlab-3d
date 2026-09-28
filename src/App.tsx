@@ -436,7 +436,7 @@ function PacketActor({ step, color, playing, blockedAfter }: { step: SimulationS
     const actor = actorRef.current
     if (!actor) return
 
-    const hasPath = step.route.length > 1
+    const hasPath = step.kind !== 'decision' && step.route.length > 1
     if (hasPath) {
       const segmentCount = step.route.length - 1
       const targetProgress = blockedAfter === undefined ? 1 : Math.max(0, Math.min(1, (blockedAfter + 0.92) / segmentCount))
@@ -447,21 +447,25 @@ function PacketActor({ step, color, playing, blockedAfter }: { step: SimulationS
       const from = devices[step.route[index]].position
       const to = devices[step.route[index + 1]].position
       actor.position.set(from[0] + (to[0] - from[0]) * local, 0.53 + Math.sin(local * Math.PI) * 0.42, from[2] + (to[2] - from[2]) * local)
-      actor.scale.setScalar(step.kind === 'decision' ? 0.74 : blockedAfter !== undefined && progress.current >= targetProgress ? 0.86 : 1)
+      actor.scale.setScalar(blockedAfter !== undefined && progress.current >= targetProgress ? 0.86 : 1)
       return
     }
 
-    // Decision-only events stay visible at the device doing the work instead of
-    // looking like a packet was lost. The beacon pulses while playback is active.
+    // Decision events remain at the device doing the work. The depth-independent
+    // marker below keeps this beacon visible even when it overlaps the device.
     const source = devices[step.route[0] ?? step.sourceDevice].position
     const pulse = playing ? (Math.sin(state.clock.elapsedTime * 5) + 1) * 0.045 : 0
     actor.position.set(source[0], 0.9 + pulse, source[2])
     actor.scale.setScalar(0.78 + pulse)
   })
   return <group ref={actorRef}>
-    <mesh>
+    <mesh renderOrder={999}>
+      <icosahedronGeometry args={[0.27, 1]} />
+      <meshBasicMaterial color={color} transparent opacity={0.26} depthTest={false} depthWrite={false} toneMapped={false} />
+    </mesh>
+    <mesh renderOrder={1000}>
       {step.kind === 'decision' ? <octahedronGeometry args={[0.18, 0]} /> : <icosahedronGeometry args={[0.16, 1]} />}
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.7} roughness={0.2} />
+      <meshBasicMaterial color="#f4fffc" depthTest={false} depthWrite={false} toneMapped={false} />
     </mesh>
     <pointLight position={[0, 0.2, 0]} color={color} intensity={step.kind === 'decision' ? 0.8 : 1.15} distance={2.5} />
   </group>
