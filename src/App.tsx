@@ -29,6 +29,7 @@ function App() {
   const [scenarioId, setScenarioId] = useState<Scenario['id']>('dhcp')
   const [stepIndex, setStepIndex] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [autoAdvance, setAutoAdvance] = useState(false)
   const [focusedDevice, setFocusedDevice] = useState<DeviceId | null>(null)
   const [linkOverrides, setLinkOverrides] = useState<Record<string, Partial<LinkCondition>>>({})
   const [routeOverride, setRouteOverride] = useState<DeviceId[] | null>(null)
@@ -61,11 +62,13 @@ function App() {
   useEffect(() => {
     if (!playing) return
     const timer = window.setTimeout(() => {
-      if (blockedAt >= 0 || stepIndex >= scenario.steps.length - 1) setPlaying(false)
-      else setStepIndex(stepIndex + 1)
-    }, 4800)
+      if (!autoAdvance || blockedAt >= 0 || stepIndex >= scenario.steps.length - 1) {
+        setPlaying(false)
+        setAutoAdvance(false)
+      } else setStepIndex(stepIndex + 1)
+    }, autoAdvance ? 4800 : 2300)
     return () => window.clearTimeout(timer)
-  }, [playing, scenario.steps.length, stepIndex, blockedAt])
+  }, [playing, autoAdvance, scenario.steps.length, stepIndex, blockedAt])
 
   useEffect(() => {
     try { window.localStorage.setItem('netlab-study-checkpoints-v1', JSON.stringify(completedLabs)) } catch { /* Progress still works for this visit. */ }
@@ -90,7 +93,7 @@ function App() {
         const id = (input as { scenarioId?: unknown } | null)?.scenarioId
         const chosen = scenarios.find((item) => item.id === id)
         if (!chosen) throw new TypeError('Choose a scenario listed in NetLab 3D.')
-        setPlaying(false); setScenarioId(chosen.id); setStepIndex(0); setFocusedDevice(null)
+        setAutoAdvance(false); setScenarioId(chosen.id); setStepIndex(0); setFocusedDevice(null); setPlaybackNonce((value) => value + 1); setPlaying(true)
         await afterPaint()
         return { scenarioId: chosen.id, title: chosen.title, eventOrder: 1, event: chosen.steps[0].protocol }
       },
@@ -108,7 +111,7 @@ function App() {
         const current = viewState.current
         const selected = scenarios.find((item) => item.id === current.scenarioId) ?? scenarios[0]
         const order = action === 'restart' ? 0 : action === 'next' ? Math.min(current.stepIndex + 1, selected.steps.length - 1) : Math.max(current.stepIndex - 1, 0)
-        setPlaying(false); setStepIndex(order)
+        setAutoAdvance(false); setStepIndex(order); setPlaybackNonce((value) => value + 1); setPlaying(true)
         await afterPaint()
         return { scenarioId: selected.id, eventOrder: order + 1, event: selected.steps[order].protocol, kind: selected.steps[order].kind }
       },
@@ -125,13 +128,14 @@ function App() {
         if (!['start', 'pause', 'restart'].includes(String(action))) throw new TypeError('Choose start, pause, or restart.')
         const current = viewState.current
         const selected = scenarios.find((item) => item.id === current.scenarioId) ?? scenarios[0]
-        if (action === 'restart') { setPlaying(false); setStepIndex(0); setPlaybackNonce((value) => value + 1) }
+        if (action === 'restart') { setAutoAdvance(false); setStepIndex(0); setPlaybackNonce((value) => value + 1); setPlaying(true) }
         if (action === 'start') {
           if (current.stepIndex >= selected.steps.length - 1) setStepIndex(0)
           setPlaybackNonce((value) => value + 1)
+          setAutoAdvance(true)
           setPlaying(true)
         }
-        if (action === 'pause') setPlaying(false)
+        if (action === 'pause') { setPlaying(false); setAutoAdvance(false) }
         await afterPaint()
         return { action, scenarioId: selected.id, status: action === 'start' ? 'playing' : 'paused', eventOrder: action === 'restart' ? 1 : viewState.current.stepIndex + 1 }
       },
@@ -143,33 +147,41 @@ function App() {
   const selectScenario = (id: Scenario['id']) => {
     setScenarioId(id)
     setStepIndex(0)
-    setPlaying(false)
+    setAutoAdvance(false)
+    setPlaying(true)
     setFocusedDevice(null)
     setRouteOverride(null)
     if (id === 'ip-sandbox') setSandboxConfig(initialLabConfig)
     setPlaybackNonce((value) => value + 1)
     setResetNonce((value) => value + 1)
   }
-  const next = () => {
-    setPlaying(false)
-    setStepIndex((index) => Math.min(index + 1, scenario.steps.length - 1))
+  const showJourneyStep = (index: number) => {
+    setAutoAdvance(false)
+    setStepIndex(index)
+    setPlaybackNonce((value) => value + 1)
+    setPlaying(true)
   }
-  const previous = () => {
-    setPlaying(false)
-    setStepIndex((index) => Math.max(index - 1, 0))
-  }
+  const next = () => showJourneyStep(Math.min(stepIndex + 1, scenario.steps.length - 1))
+  const previous = () => showJourneyStep(Math.max(stepIndex - 1, 0))
   const restart = () => {
-    setPlaying(false)
+    setAutoAdvance(false)
     setStepIndex(0)
     setRouteOverride(null)
     setPlaybackNonce((value) => value + 1)
     setResetNonce((value) => value + 1)
     setLinkOverrides((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith(`${scenario.id}:`))))
+    setPlaying(true)
   }
   const togglePlay = () => {
-    if (stepIndex >= scenario.steps.length - 1 && !playing) setStepIndex(0)
-    if (!playing) setPlaybackNonce((value) => value + 1)
-    setPlaying((value) => !value)
+    if (playing) {
+      setPlaying(false)
+      setAutoAdvance(false)
+      return
+    }
+    if (stepIndex >= scenario.steps.length - 1) setStepIndex(0)
+    setPlaybackNonce((value) => value + 1)
+    setAutoAdvance(true)
+    setPlaying(true)
   }
   const patchLink = useCallback((linkId: string, patch: Partial<LinkCondition>) => {
     setLinkOverrides((current) => {
@@ -294,7 +306,7 @@ function App() {
               <PacketActor key={`${scenario.id}-${step.order}-${routeForStage.join('-')}-${playbackNonce}`} step={{ ...step, route: routeForStage }} color={scenario.accent} playing={playing} blockedAfter={blockedAt >= 0 ? blockedAt : undefined} />
               <OrbitControls makeDefault enablePan={false} minDistance={9} maxDistance={22} minPolarAngle={0.22} maxPolarAngle={1.43} rotateSpeed={0.55} zoomSpeed={0.7} />
             </Canvas>
-            <div className="scene-legend"><span><i className="legend-cable" />Network link</span><span><i className="legend-packet" style={{ background: scenario.accent, boxShadow: `0 0 9px ${scenario.accent}` }} />{step.kind === 'decision' ? 'Current route decision' : 'Highlighted path + packet'}</span></div>
+            <div className="scene-legend"><span><i className="legend-cable" />Network link</span><span><i className="legend-packet" style={{ background: scenario.accent, boxShadow: `0 0 9px ${scenario.accent}` }} />{routeForStage.length > 1 ? 'Packet moves along highlighted path' : step.kind === 'decision' ? 'Local decision · no frame sent' : 'Device processing'}</span></div>
             {focusedDevice && <button className="focus-chip" onClick={() => setFocusedDevice(null)}>{deviceName(scenario, focusedDevice)}<span>×</span></button>}
           </div>
           <div className={`stage-explanation ${blockedLink ? 'blocked' : ''}`} aria-live="polite"><span>{blockedLink ? 'LINK DOWN · PACKET STOPS HERE' : `EVENT ${step.order} · ${step.protocol}`}</span><p>{blockedLink ? `${blockedLink} is down. The packet stops before that link; open Lab Tools to restore the link or test a different path.` : step.explanation}</p></div>
@@ -308,7 +320,7 @@ function App() {
           <div className="event-rail-wrap">
             <div className="event-rail-line" />
             <div className="event-rail">
-              {scenario.steps.map((event, index) => <button key={`${event.order}-${event.protocol}`} className={`event-stop ${index === stepIndex ? 'current' : ''} ${index < stepIndex ? 'complete' : ''} ${event.kind === 'decision' ? 'decision-stop' : ''}`} style={{ '--event-accent': scenario.accent } as React.CSSProperties} onClick={() => { setPlaying(false); setStepIndex(index) }} aria-label={`Go to event ${event.order}: ${event.protocol}`} aria-current={index === stepIndex ? 'step' : undefined}>
+              {scenario.steps.map((event, index) => <button key={`${event.order}-${event.protocol}`} className={`event-stop ${index === stepIndex ? 'current' : ''} ${index < stepIndex ? 'complete' : ''} ${event.kind === 'decision' ? 'decision-stop' : ''}`} style={{ '--event-accent': scenario.accent } as React.CSSProperties} onClick={() => showJourneyStep(index)} aria-label={`Go to event ${event.order}: ${event.protocol}`} aria-current={index === stepIndex ? 'step' : undefined}>
                 <span className="event-stop-index">{index < stepIndex ? <BadgeCheck size={13} /> : String(event.order).padStart(2, '0')}</span>
                 <span className="event-stop-label">{event.protocol.replace(' · ', ' ').replace(' · ', ' ').replace('REQUEST ', 'REQ ').replace('RESPONSE', 'RESP').replace('DEFAULT GATEWAY', 'GATEWAY')}</span>
                 <span className="event-stop-time">{event.kind === 'decision' ? 'ROUTE CHECK' : event.kind === 'frame' ? 'FRAME' : 'IP PACKET'}</span>
@@ -322,7 +334,7 @@ function App() {
           key={`${scenario.id}-${resetNonce}`}
           scenario={scenario}
           stepIndex={stepIndex}
-          onSelectStep={(index) => { setPlaying(false); setStepIndex(index) }}
+          onSelectStep={showJourneyStep}
           linkConditions={activeLinks}
           onLinkPatch={patchLink}
           onRouteUpdate={setRouteOverride}
@@ -436,23 +448,23 @@ function PacketActor({ step, color, playing, blockedAfter }: { step: SimulationS
     const actor = actorRef.current
     if (!actor) return
 
-    const hasPath = step.kind !== 'decision' && step.route.length > 1
+    const hasPath = step.route.length > 1
     if (hasPath) {
       const segmentCount = step.route.length - 1
       const targetProgress = blockedAfter === undefined ? 1 : Math.max(0, Math.min(1, (blockedAfter + 0.92) / segmentCount))
-      if (playing) progress.current = Math.min(targetProgress, progress.current + Math.min(delta, 0.1) / 2.3)
+      if (playing) progress.current = Math.min(targetProgress, progress.current + delta / 1.65)
       const scaled = progress.current * segmentCount
       const index = Math.min(Math.floor(scaled), segmentCount - 1)
       const local = progress.current >= 1 ? 1 : scaled - index
       const from = devices[step.route[index]].position
       const to = devices[step.route[index + 1]].position
       actor.position.set(from[0] + (to[0] - from[0]) * local, 0.53 + Math.sin(local * Math.PI) * 0.42, from[2] + (to[2] - from[2]) * local)
-      actor.scale.setScalar(blockedAfter !== undefined && progress.current >= targetProgress ? 0.86 : 1)
+      actor.scale.setScalar(step.kind === 'decision' ? 0.76 : blockedAfter !== undefined && progress.current >= targetProgress ? 0.86 : 1)
       return
     }
 
-    // Decision events remain at the device doing the work. The depth-independent
-    // marker below keeps this beacon visible even when it overlaps the device.
+    // A one-device route is a local operation rather than a network transit.
+    // Keep the depth-independent beacon visible at the device while it is inspected.
     const source = devices[step.route[0] ?? step.sourceDevice].position
     const pulse = playing ? (Math.sin(state.clock.elapsedTime * 5) + 1) * 0.045 : 0
     actor.position.set(source[0], 0.9 + pulse, source[2])
