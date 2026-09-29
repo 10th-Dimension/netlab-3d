@@ -54,6 +54,13 @@ function App() {
   const routeForStage = routeOverride ?? step.route
   const blockedAt = routeForStage.findIndex((device, index) => index < routeForStage.length - 1 && activeLinks.some((link) => link.id === linkKey(device, routeForStage[index + 1]) && link.status === 'down'))
   const blockedLink = blockedAt >= 0 ? `${deviceName(scenario, routeForStage[blockedAt])} ↔ ${deviceName(scenario, routeForStage[blockedAt + 1])}` : null
+  const blockedHop = routeOverride ? null : step.blockedHop ?? null
+  const blockedHopKey = blockedHop ? linkKey(blockedHop[0], blockedHop[1]) : null
+  const routeNames = routeForStage.map((device) => deviceName(scenario, device))
+  const routeSummary = routeForStage.length > 1
+    ? routeNames.join(' → ')
+    : `${deviceName(scenario, routeForStage[0] ?? step.sourceDevice)} · no frame sent`
+  const routeOutcome = blockedHop ? ` · dropped before ${deviceName(scenario, blockedHop[1])}` : ''
   const viewState = useRef({ scenarioId, stepIndex, playing })
   viewState.current = { scenarioId, stepIndex, playing }
 
@@ -276,7 +283,7 @@ function App() {
               </mesh>
               <gridHelper args={[20, 20, '#1e3548', '#142638']} position={[0, 0.005, 0]} />
               <ContactShadows position={[0, 0.01, 0]} opacity={0.28} scale={18} blur={2.8} far={4} />
-              {topologyLinks.map(([from, to]) => <NetworkLink key={`${from}-${to}`} from={from} to={to} active={routeHasLink(routeForStage, from, to)} status={activeLinks.find((link) => link.id === linkKey(from, to))?.status ?? 'up'} accent={scenario.accent} />)}
+              {topologyLinks.map(([from, to]) => <NetworkLink key={`${from}-${to}`} from={from} to={to} active={routeHasLink(routeForStage, from, to)} status={activeLinks.find((link) => link.id === linkKey(from, to))?.status ?? 'up'} blocked={blockedHopKey === linkKey(from, to)} accent={scenario.accent} />)}
               {Object.values(devices).filter((device) => visibleNodes.includes(device.id)).map((device) => {
                 const label = scenario.topology?.nodes?.[device.id]
                 const runtimeDevice = networkState.devices[device.id]
@@ -293,10 +300,10 @@ function App() {
               <PacketActor key={`${scenario.id}-${step.order}-${routeForStage.join('-')}-${playbackNonce}`} step={{ ...step, route: routeForStage }} color={scenario.accent} playing={playing} blockedAfter={blockedAt >= 0 ? blockedAt : undefined} />
               <OrbitControls makeDefault enablePan={false} minDistance={9} maxDistance={22} minPolarAngle={0.22} maxPolarAngle={1.43} rotateSpeed={0.55} zoomSpeed={0.7} />
             </Canvas>
-            <div className="scene-legend"><span><i className="legend-cable" />Network link</span><span><i className="legend-packet" style={{ background: scenario.accent, boxShadow: `0 0 9px ${scenario.accent}` }} />{routeForStage.length > 1 ? playing ? 'Packet moving · press Pause to hold' : 'Press Start to move the packet' : step.kind === 'decision' ? 'Local decision · no frame sent' : 'Device processing'}</span></div>
+            <div className="scene-legend"><span><i className="legend-cable" />Network link</span><span><i className="legend-packet" style={{ background: blockedHop ? '#fa7785' : scenario.accent, boxShadow: `0 0 9px ${blockedHop ? '#fa7785' : scenario.accent}` }} />{routeForStage.length > 1 ? blockedHop ? 'Packet stops at the red drop point' : playing ? 'Packet moving · press Pause to hold' : 'Press Start to move the packet' : step.kind === 'decision' ? 'Local action · no frame on the network' : 'Device processing'}</span></div>
             {focusedDevice && <button className="focus-chip" onClick={() => setFocusedDevice(null)}>{deviceName(scenario, focusedDevice)}<span>×</span></button>}
           </div>
-          <div className={`stage-explanation ${blockedLink ? 'blocked' : ''}`} aria-live="polite"><span>{blockedLink ? 'LINK DOWN · PACKET STOPS HERE' : `EVENT ${step.order} · ${step.protocol}`}</span><p>{blockedLink ? `${blockedLink} is down. The packet stops before that link; open Lab Tools to restore the link or test a different path.` : step.explanation}</p></div>
+          <div className={`stage-explanation ${blockedLink || blockedHop ? 'blocked' : ''}`} aria-live="polite"><span>{blockedLink ? 'LINK DOWN · PACKET STOPS HERE' : blockedHop ? `FRAME DROPPED BEFORE ${deviceName(scenario, blockedHop[1])}` : routeForStage.length === 1 && step.kind === 'decision' ? `LOCAL EVENT · ${deviceName(scenario, routeForStage[0])} · NO FRAME SENT` : `EVENT ${step.order} · ${step.protocol}`}</span><p>{blockedLink ? `${blockedLink} is down. The packet stops before that link; open Lab Tools to restore the link or test a different path.` : step.explanation}</p></div>
         </section>
 
         <section className="panel timeline-panel">
@@ -310,11 +317,18 @@ function App() {
               {scenario.steps.map((event, index) => <button key={`${event.order}-${event.protocol}`} className={`event-stop ${index === stepIndex ? 'current' : ''} ${index < stepIndex ? 'complete' : ''} ${event.kind === 'decision' ? 'decision-stop' : ''}`} style={{ '--event-accent': scenario.accent } as React.CSSProperties} onClick={() => showJourneyStep(index)} aria-label={`Go to event ${event.order}: ${event.protocol}`} aria-current={index === stepIndex ? 'step' : undefined}>
                 <span className="event-stop-index">{index < stepIndex ? <BadgeCheck size={13} /> : String(event.order).padStart(2, '0')}</span>
                 <span className="event-stop-label">{event.protocol.replace(' · ', ' ').replace(' · ', ' ').replace('REQUEST ', 'REQ ').replace('RESPONSE', 'RESP').replace('DEFAULT GATEWAY', 'GATEWAY')}</span>
-                <span className="event-stop-time">{event.kind === 'decision' ? 'ROUTE CHECK' : event.kind === 'frame' ? 'FRAME' : 'IP PACKET'}</span>
+                <span className="event-stop-time">{event.kind === 'decision' ? event.route.length === 1 ? 'LOCAL · NO FRAME' : event.blockedHop ? 'DROP POINT' : 'PATH CHECK' : event.kind === 'frame' ? 'FRAME' : 'IP PACKET'}</span>
               </button>)}
             </div>
           </div>
-          <div className="timeline-footer"><span><span className="footer-cyan" /> {deviceName(scenario, step.sourceDevice)}</span><ArrowRight size={13} /><span><span className="footer-target" /> {deviceName(scenario, step.destinationDevice)}</span><span className="timeline-footer-payload">{step.payload}</span><div className="timeline-next-buttons"><button onClick={previous} disabled={stepIndex === 0}><ArrowLeft size={13} /> PREVIOUS</button><button onClick={next} disabled={stepIndex === scenario.steps.length - 1}>NEXT STEP <ArrowRight size={13} /></button></div></div>
+          <div className="timeline-footer">
+            <div className={`timeline-route-summary ${routeForStage.length === 1 ? 'is-local' : ''} ${blockedHop ? 'is-dropped' : ''}`} data-route={routeForStage.join('>')} data-event-kind={step.kind} aria-live="polite">
+              <b>{routeForStage.length === 1 ? 'LOCAL' : blockedHop ? 'DROP' : 'PATH'}</b>
+              <span>{routeSummary}{routeOutcome}</span>
+            </div>
+            <span className="timeline-footer-payload" title={step.payload}>{step.payload}</span>
+            <div className="timeline-next-buttons"><button onClick={previous} disabled={stepIndex === 0}><ArrowLeft size={13} /> PREVIOUS</button><button onClick={next} disabled={stepIndex === scenario.steps.length - 1}>NEXT STEP <ArrowRight size={13} /></button></div>
+          </div>
         </section>
         </>}
         <Phase2Panel
@@ -357,14 +371,17 @@ function routeHasLink(route: DeviceId[], from: DeviceId, to: DeviceId) {
   return route.some((device, index) => (device === from && route[index + 1] === to) || (device === to && route[index + 1] === from))
 }
 
-function NetworkLink({ from, to, active, status, accent }: { from: DeviceId; to: DeviceId; active: boolean; status: 'up' | 'down'; accent: string }) {
+function NetworkLink({ from, to, active, status, blocked, accent }: { from: DeviceId; to: DeviceId; active: boolean; status: 'up' | 'down'; blocked: boolean; accent: string }) {
   const start = devices[from].position
   const end = devices[to].position
   const midpoint: [number, number, number] = [(start[0] + end[0]) / 2, 0.14 + Math.min(0.28, Math.abs(start[2] - end[2]) * 0.035), (start[2] + end[2]) / 2]
   const points = [new Vector3(start[0], 0.18, start[2]), new Vector3(...midpoint), new Vector3(end[0], 0.18, end[2])]
+  const dropPoint: [number, number, number] = [start[0] + (end[0] - start[0]) * 0.17, 0.48, start[2] + (end[2] - start[2]) * 0.17]
+  const lineColor = status === 'down' || blocked ? '#f07886' : active ? accent : '#325069'
   return <>
-    <Line points={points} color={status === 'down' ? '#e36c79' : active ? accent : '#325069'} lineWidth={active || status === 'down' ? 2.1 : 1.05} transparent opacity={status === 'down' ? 0.88 : active ? 0.96 : 0.48} />
+    <Line points={points} color={lineColor} lineWidth={active || status === 'down' || blocked ? 2.2 : 1.05} transparent opacity={status === 'down' || blocked ? 0.94 : active ? 0.96 : 0.48} dashed={blocked} />
     {active && status === 'up' && <Line points={points} color={accent} lineWidth={5} transparent opacity={0.11} />}
+    {blocked && <Html center position={dropPoint} zIndexRange={[30, 0]}><span className="packet-drop-marker" title="Frame filtered here">×</span></Html>}
   </>
 }
 
@@ -459,11 +476,15 @@ function PacketActor({ step, color, playing, blockedAfter }: { step: SimulationS
     // A one-device route is a local operation rather than a network transit.
     // Keep the depth-independent beacon visible at the device while it is inspected.
     const source = devices[step.route[0] ?? step.sourceDevice].position
-    const pulse = playing ? (Math.sin(state.clock.elapsedTime * 5) + 1) * 0.045 : 0
+    const pulse = playing ? (Math.sin(state.clock.elapsedTime * 5) + 1) * 0.1 : 0.025
     actor.position.set(source[0], 0.9 + pulse, source[2])
-    actor.scale.setScalar(0.78 + pulse)
+    actor.scale.setScalar(0.84 + pulse)
   })
   return <group ref={actorRef}>
+    {step.route.length === 1 && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.42, 0]} renderOrder={998}>
+      <torusGeometry args={[0.3, 0.025, 6, 32]} />
+      <meshBasicMaterial color={color} transparent opacity={playing ? 0.58 : 0.32} depthTest={false} depthWrite={false} toneMapped={false} />
+    </mesh>}
     <mesh renderOrder={999}>
       <icosahedronGeometry args={[0.27, 1]} />
       <meshBasicMaterial color={color} transparent opacity={0.26} depthTest={false} depthWrite={false} toneMapped={false} />

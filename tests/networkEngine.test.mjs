@@ -71,12 +71,28 @@ test('preserves all original journeys and loads every Phase 2 journey', () => {
   assert.ok(scenarios.every((scenario) => scenario.steps.length > 0))
   for (const scenario of scenarios) {
     const availableLinks = new Set(scenarioLinks(scenario).map((link) => link.id))
+    const visibleNodes = new Set(scenario.topology?.visibleNodes ?? Object.keys(devices).filter((id) => id !== 'switch2' && id !== 'switch3'))
     for (const step of scenario.steps) {
+      for (const device of step.route) {
+        assert.ok(visibleNodes.has(device), `${scenario.id} event ${step.order} moves through hidden device ${device}`)
+      }
       for (let index = 0; index < step.route.length - 1; index++) {
         assert.ok(availableLinks.has(linkKey(step.route[index], step.route[index + 1])), `${scenario.id} event ${step.order} has no rendered link for ${step.route[index]} → ${step.route[index + 1]}`)
       }
+      if (step.blockedHop) {
+        assert.equal(step.route.at(-1), step.blockedHop[0], `${scenario.id} event ${step.order} must stop at the blocked-hop source`)
+        assert.ok(availableLinks.has(linkKey(...step.blockedHop)), `${scenario.id} event ${step.order} drop point has no visible link`)
+      }
     }
   }
+})
+
+test('the VLAN trunk fault shows the packet reaching the switch and dropping before the router', () => {
+  const scenario = scenarios.find((item) => item.id === 'trunk-fault')
+  const dropped = scenario.steps.find((step) => step.protocol === 'TRUNK FILTER · VLAN 20 DROPPED')
+  assert.deepEqual(dropped.route, ['windows', 'switch'])
+  assert.deepEqual(dropped.blockedHop, ['switch', 'router'])
+  assert.match(dropped.explanation, /discards it at trunk Gi0\/1/i)
 })
 
 test('every packet journey has a complete, finite visual path or is an explicitly local decision', () => {
