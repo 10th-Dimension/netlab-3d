@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { scenarios } from '../src/simulation.ts'
+import { devices, scenarios } from '../src/simulation.ts'
+import { packetPositionAt, packetProgressAt } from '../src/packetAnimation.ts'
 import {
   captureRows,
   createNetworkState,
@@ -76,6 +77,38 @@ test('preserves all original journeys and loads every Phase 2 journey', () => {
       }
     }
   }
+})
+
+test('every packet journey has a complete, finite visual path or is an explicitly local decision', () => {
+  let animatedEvents = 0
+  let localDecisions = 0
+  for (const scenario of scenarios) {
+    for (const step of scenario.steps) {
+      if (step.route.length < 2) {
+        assert.equal(step.kind, 'decision', `${scenario.id} event ${step.order} is missing a packet route`)
+        assert.equal(step.route.length, 1, `${scenario.id} event ${step.order} has no animation route`)
+        localDecisions += 1
+        continue
+      }
+      animatedEvents += 1
+      const start = packetPositionAt(step.route, 0, devices)
+      const middle = packetPositionAt(step.route, 0.5, devices)
+      const finish = packetPositionAt(step.route, 1, devices)
+      assert.ok(start && middle && finish, `${scenario.id} event ${step.order} must resolve its device positions`)
+      const startExpected = [devices[step.route[0]].position[0], 0.53, devices[step.route[0]].position[2]]
+      const finishExpected = [devices[step.route.at(-1)].position[0], 0.53, devices[step.route.at(-1)].position[2]]
+      assert.ok(start.every((value, index) => Math.abs(value - startExpected[index]) < 1e-12), `${scenario.id} event ${step.order} does not begin at its source`)
+      assert.ok(finish.every((value, index) => Math.abs(value - finishExpected[index]) < 1e-12), `${scenario.id} event ${step.order} does not reach its destination`)
+      assert.ok(middle.every(Number.isFinite), `${scenario.id} event ${step.order} has a non-finite midpoint`)
+      assert.equal(packetProgressAt(20, 20, 1.65), 0)
+      assert.ok(Math.abs(packetProgressAt(20.825, 20, 1.65) - 0.5) < 1e-12)
+      assert.ok(Math.abs(packetProgressAt(21.65, 20, 1.65) - 1) < 1e-12)
+      assert.ok(Math.abs(packetProgressAt(20.4125, 20, 1.65, 1, 0.25) - 0.5) < 1e-12, 'resuming playback continues from its paused position')
+      assert.equal(packetProgressAt(21.65, 20, 1.65, 0.75, 0.9), 0.75, 'blocked routes stop at their boundary')
+    }
+  }
+  assert.ok(animatedEvents > 100, `expected broad packet coverage, saw ${animatedEvents} animated events`)
+  assert.ok(localDecisions > 0)
 })
 
 test('event replay mutates one visible DHCP lease and ARP state', () => {

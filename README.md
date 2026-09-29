@@ -12,7 +12,7 @@ NetLab 3D is aimed at students learning the foundations covered by Network+ and 
 - Longest prefix match, packet captures, CLI output, and 14 troubleshooting fault cases
 - An editable IP sandbox where changing the address, mask, gateway, or VLAN changes the modeled outcome
 
-Choose a scenario from the left, read its goal, then step through or play the packet path. Select a device to inspect its state. The **Lab** and **Troubleshoot** panels let you make changes and observe the modeled result. Checkpoints give you a question to answer after each journey.
+Choose a scenario from the left and read its goal. The journey opens paused; press **Start** to watch the packet move, **Pause** to hold it, or select an event to inspect that point. **Restart** returns to the first event. Packet motion follows elapsed time so a skipped browser frame does not leave the marker stranded mid-route. Select a device to inspect its state. The **Lab** and **Troubleshoot** panels let you make changes and observe the modeled result. Checkpoints give you a question to answer after each journey.
 
 ## Run locally
 
