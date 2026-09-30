@@ -633,7 +633,7 @@ button:focus-visible { outline: 2px solid #70e5d2; outline-offset: 2px; }
 @media (min-width: 981px) {
   .workspace {
     grid-template-columns: minmax(210px, 225px) minmax(430px, 1fr) minmax(300px, 330px);
-    grid-template-rows: minmax(360px, 1.5fr) 225px;
+    grid-template-rows: minmax(360px, 1.5fr) 176px;
     gap: 9px;
   }
   .sidebar { gap: 9px; grid-template-rows: minmax(330px, 1fr) minmax(210px, 242px); }
@@ -648,14 +648,14 @@ button:focus-visible { outline: 2px solid #70e5d2; outline-offset: 2px; }
   .stage-title-wrap p { font-size: 13px; line-height: 1.35; }
   .stage-explanation { min-height: 70px; max-height: 94px; padding: 8px 13px; }
   .stage-explanation p { margin-top: 3px; font-size: 13px; line-height: 1.38; }
-  .timeline-panel { padding: 10px 12px 8px; }
-  .timeline-heading { padding: 6px 2px 0; }
+  .timeline-panel { padding: 5px 12px 4px; }
+  .timeline-heading { padding: 2px 2px 0; }
   .timeline-heading h2 { font-size: 15px; }
-  .timeline-instruction { margin-top: 2px; font-size: 12px; }
-  .event-rail-wrap { min-height: 96px; }
-  .timeline-footer { min-height: 40px; padding: 5px 9px; }
-  .timeline-route-summary { min-height: 27px; padding: 4px 6px; font-size: 11px; }
-  .timeline-next-buttons button { min-height: 29px; padding: 4px 7px; font-size: 11px; }
+  .timeline-instruction { display: none; }
+  .event-rail-wrap { min-height: 84px; margin: 2px 0; }
+  .timeline-footer { min-height: 30px; padding: 2px 7px 0; gap: 6px; }
+  .timeline-route-summary { min-height: 23px; padding: 3px 6px; font-size: 11px; }
+  .timeline-next-buttons button { min-height: 26px; padding: 3px 7px; font-size: 11px; }
 }
 
 @media (min-width: 981px) and (max-width: 1260px) {
