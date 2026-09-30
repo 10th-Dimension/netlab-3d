@@ -628,3 +628,34 @@ button:focus-visible { outline: 2px solid #70e5d2; outline-offset: 2px; }
   .checkpoint-card { padding: 10px; }
   .sandbox-prediction > div { flex-direction: column; }
 }
+
+/* Give the network map most of the desktop workspace. */
+@media (min-width: 981px) {
+  .workspace {
+    grid-template-columns: minmax(210px, 225px) minmax(430px, 1fr) minmax(300px, 330px);
+    grid-template-rows: minmax(420px, 1.5fr) 160px;
+    gap: 9px;
+  }
+  .sidebar { gap: 9px; grid-template-rows: minmax(330px, 1fr) minmax(210px, 242px); }
+  .scenario-panel { padding: 11px; }
+  .osi-panel { padding: 8px 10px; }
+  .scenario-button { min-height: 46px; grid-template-columns: 18px 22px minmax(0, 1fr) 10px; gap: 4px; }
+  .scenario-icon { width: 21px; height: 21px; }
+  .scenario-text b { font-size: 14px; }
+  .scenario-text small { font-size: 12px; }
+  .stage-heading { min-height: 72px; padding: 10px 13px 7px; }
+  .stage-title-wrap h1 { font-size: 18px; }
+  .stage-title-wrap p { font-size: 13px; line-height: 1.35; }
+  .stage-explanation { min-height: 70px; max-height: 94px; padding: 8px 13px; }
+  .stage-explanation p { margin-top: 3px; font-size: 13px; line-height: 1.38; }
+  .timeline-heading { padding: 8px 12px 5px; }
+  .timeline-heading h2 { font-size: 15px; }
+  .timeline-instruction { margin-top: 2px; font-size: 12px; }
+  .timeline-footer { min-height: 40px; padding: 5px 9px; }
+  .timeline-route-summary { min-height: 27px; padding: 4px 6px; font-size: 11px; }
+  .timeline-next-buttons button { min-height: 29px; padding: 4px 7px; font-size: 11px; }
+}
+
+@media (min-width: 981px) and (max-width: 1260px) {
+  .workspace { grid-template-columns: minmax(200px, 215px) minmax(370px, 1fr) minmax(285px, 310px); }
+}

@@ -1,6 +1,6 @@
 # NetLab 3D
 
-An interactive networking study lab. Follow packets through 3D topologies, inspect the state of each device, try selected commands, and change configurations to see why traffic succeeds or fails.
+NetLab 3D is an interactive networking study lab for CompTIA Network+ and introductory networking courses. Follow packets through 3D topologies, inspect device state, try commands, and change configurations to see why traffic succeeds or fails. The expanded network map gives packet paths more room while keeping scenario and lab controls close at hand.
 
 NetLab 3D is aimed at students learning the foundations covered by Network+ and introductory networking courses. It is an independent educational project; it is not affiliated with or endorsed by CompTIA, Bellingham Technical College, or the organizations linked as references in the labs.
 
